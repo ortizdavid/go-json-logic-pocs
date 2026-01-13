@@ -1,0 +1,9 @@
+{
+    "users": [
+        {"name": "Diego", "age": 33, "location": "Florianópolis"},
+        {"name": "Jack", "age": 12, "location": "London"},
+        {"name": "Pedro", "age": 19, "location": "Lisbon"},
+        {"name": "Ana", "age": 10, "location": "Sao Paulo"},
+        {"name": "Leopoldina", "age": 30, "location": "Rio de Janeiro"}
+    ]
+}

@@ -27,7 +27,7 @@ func applyLogic(c echo.Context) error {
 	}
 
 	// Lê regra JsonLogic do arquivo
-	dataBytes, err := os.ReadFile("poc2.rule.json")
+	dataBytes, err := os.ReadFile("./rules/poc2.rule.json")
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
@@ -58,6 +58,6 @@ func main() {
 	e := echo.New()
 	e.POST("/apply-logic", applyLogic)
 
-	fmt.Println("Server running on :8080")
-	e.Logger.Fatal(e.Start(":8080"))
+	fmt.Println("Server running on :8081")
+	e.Logger.Fatal(e.Start(":8081"))
 }

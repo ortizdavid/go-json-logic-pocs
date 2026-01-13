@@ -7,112 +7,86 @@ import (
 	"net/http"
 	"os"
 
-	jsonlogic "github.com/diegoholiveira/jsonlogic/v3"
+	"github.com/diegoholiveira/jsonlogic/v3"
+	"github.com/labstack/echo/v4"
 )
 
-type Rule struct {
-	ID    string      `json:"id"`
-	Logic interface{} `json:"logic"`
+// Struct do pedido
+type Order struct {
+	CustomerType    string  `json:"customerType"`
+	DiscountPercent float64 `json:"discountPercent"`
+	GrossTotal      float64 `json:"grossTotal"`
+	DeliveryType    string  `json:"deliveryType"`
+	DeliveryFee     float64 `json:"deliveryFee"`
+	ManagerApproved bool    `json:"managerApproved"`
+}
+
+// Payload esperado: { "order": {...} }
+type Payload struct {
+	Order Order `json:"order"`
+}
+
+// Função genérica para aplicar JsonLogic
+func applyJsonLogic(rulePath string, payload Payload) (interface{}, error) {
+	// Lê regra JsonLogic do arquivo
+	ruleBytes, err := os.ReadFile(rulePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Converte payload para Reader
+	payloadBytes, _ := json.Marshal(payload)
+	payloadReader := bytes.NewReader(payloadBytes)
+
+	var result bytes.Buffer
+	if err := jsonlogic.Apply(bytes.NewReader(ruleBytes), payloadReader, &result); err != nil {
+		return nil, err
+	}
+
+	// Decodifica resultado em interface{} (array ou objeto)
+	var res interface{}
+	if err := json.NewDecoder(&result).Decode(&res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func applyDiscounts(c echo.Context) error {
+	var payload Payload
+	if err := c.Bind(&payload); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	res, err := applyJsonLogic("./rules/discounts.json", payload)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	//return c.JSON(http.StatusOK, res)
+	return c.JSONPretty(http.StatusOK, res, "  ")
+}
+
+func applyRestrictions(c echo.Context) error {
+	var payload Payload
+	if err := c.Bind(&payload); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	res, err := applyJsonLogic("./rules/restrictions.json", payload)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	//return c.JSON(http.StatusOK, res)
+	return c.JSONPretty(http.StatusOK, res, "  ")
 }
 
 func main() {
-	http.HandleFunc("/evaluate", handler)
+	e := echo.New()
+	e.POST("/apply-discounts", applyDiscounts)
+	e.POST("/apply-restrictions", applyRestrictions)
 
-	fmt.Println("JSON Logic Server running on :8080")
-	http.ListenAndServe(":8080", nil)
-}
-
-func handler(w http.ResponseWriter, r *http.Request) {
-	var input map[string]interface{}
-
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	multiplier, err := applyDiscounts(input)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	allowed, err := applyRestrictions(input)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"multiplier": multiplier,
-		"allowed":    allowed,
-	})
-}
-
-func applyDiscounts(input map[string]interface{}) (float64, error) {
-	rules, err := loadRules("rules/discounts.json")
-	if err != nil {
-		return 1, err
-	}
-
-	multiplier := 1.0
-
-	for _, r := range rules {
-		var result float64
-
-		err := applyRule(r.Logic, input, &result)
-		if err != nil {
-			return 1, err
-		}
-
-		multiplier *= result
-	}
-
-	return multiplier, nil
-}
-
-func applyRestrictions(input map[string]interface{}) (bool, error) {
-	rules, err := loadRules("rules/restrictions.json")
-	if err != nil {
-		return false, err
-	}
-
-	for _, r := range rules {
-		var allowed bool
-
-		err := applyRule(r.Logic, input, &allowed)
-		if err != nil {
-			return false, err
-		}
-
-		if !allowed {
-			return false, nil
-		}
-	}
-
-	return true, nil
-}
-
-func loadRules(path string) ([]Rule, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var rules []Rule
-	if err := json.Unmarshal(data, &rules); err != nil {
-		return nil, err
-	}
-
-	return rules, nil
-}
-
-func applyRule(logic interface{}, data interface{}, result interface{}) error {
-	logicBytes, _ := json.Marshal(logic)
-	dataBytes, _ := json.Marshal(data)
-
-	return jsonlogic.Apply(
-		bytes.NewReader(logicBytes),
-		bytes.NewReader(dataBytes),
-		result,
-	)
+	fmt.Println("Server running on :8080")
+	e.Logger.Fatal(e.Start(":8080"))
 }

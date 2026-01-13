@@ -1,20 +1,33 @@
-{
-  "id": "needs_manager_approval",
-  "type": "WORKFLOW",
-  "logic": {
-    "or": [
-      {
-        "and": [
-          { ">": [ { "var": "discountPercent" }, 15 ] },
-          { ">": [ { "var": "grossTotal" }, 1000 ] }
-        ]
-      },
-      {
-        ">": [
-          { "+": [ { "var": "dailyTotal" }, { "var": "orderTotal" } ] },
-          { "var": "dailyLimit" }
-        ]
-      }
-    ]
+[
+  {
+    "field": "allowed",
+    "rule": {
+      "if": [
+        { "==": [ { "var": "order.deliveryType" }, "RETIRADA_LOJA" ] },
+        { "==": [ { "var": "order.deliveryFee" }, 0 ] },
+        { "==": [ { "var": "order.deliveryType" }, "ENTREGA_DOMICILIO" ] },
+        { "if": [
+            { ">=": [ { "var": "order.grossTotal" }, 300 ] },
+            true,
+            { ">=": [ { "var": "order.deliveryFee" }, 15 ] }
+          ]
+        },
+        true
+      ]
+    }
+  },
+  {
+    "field": "needsApproval",
+    "rule": {
+      "if": [
+        { "and": [
+            { ">": [ { "var": "order.discountPercent" }, 15 ] },
+            { ">": [ { "var": "order.grossTotal" }, 1000 ] }
+          ]
+        },
+        { "var": "order.managerApproved" },
+        false
+      ]
+    }
   }
-}
+]

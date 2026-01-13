@@ -1,12 +1,14 @@
-{
-  "id": "discount_by_customer_type",
-  "type": "VALIDATION",
-  "errorMessage": "Desconto acima do permitido para o tipo de cliente",
-  "logic": {
-    "if": [
-      { "==": [ { "var": "customerType" }, "PF" ] },
-      { "<=": [ { "var": "discountPercent" }, 10 ] },
-      { "<=": [ { "var": "discountPercent" }, 20 ] }
-    ]
+[
+  {
+    "rule": {
+      "if": [
+        { "==": [ { "var": "order.customerType" }, "PF" ] },
+        { "min": [ { "var": "order.discountPercent" }, 10 ] },
+        { "==": [ { "var": "order.customerType" }, "PJ" ] },
+        { "min": [ { "var": "order.discountPercent" }, 20 ] },
+        { "var": "order.discountPercent" }
+      ]
+    },
+    "field": "discountPercent"
   }
-}
+]

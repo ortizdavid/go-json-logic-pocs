@@ -4,4 +4,7 @@
 ## Tools
 - Go 
 - Echo Framework
-- JSON-Logic lib
+- JSONLogic lib
+
+## Official documentation
+https://github.com/diegoholiveira/jsonlogic
