@@ -1,0 +1,20 @@
+{
+  "id": "needs_manager_approval",
+  "type": "WORKFLOW",
+  "logic": {
+    "or": [
+      {
+        "and": [
+          { ">": [ { "var": "discountPercent" }, 15 ] },
+          { ">": [ { "var": "grossTotal" }, 1000 ] }
+        ]
+      },
+      {
+        ">": [
+          { "+": [ { "var": "dailyTotal" }, { "var": "orderTotal" } ] },
+          { "var": "dailyLimit" }
+        ]
+      }
+    ]
+  }
+}
