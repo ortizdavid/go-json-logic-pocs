@@ -52,13 +52,54 @@ func applyJsonLogic(rulePath string, payload Payload) (interface{}, error) {
 	return res, nil
 }
 
+func applyJsonLogicRules(rulePath string, payload Payload) (map[string]interface{}, error) {
+    // Lê regra JsonLogic
+    ruleBytes, err := os.ReadFile(rulePath)
+    if err != nil {
+        return nil, err
+    }
+
+    // Decodifica arquivo de regras (array de {field, rule})
+    var rules []struct {
+        Field string                 `json:"field"`
+        Rule  map[string]interface{} `json:"rule"`
+    }
+    if err := json.Unmarshal(ruleBytes, &rules); err != nil {
+        return nil, err
+    }
+
+    // Resultado final
+    result := make(map[string]interface{})
+
+    for _, r := range rules {
+        // Marshal rule individual
+        ruleJSON, _ := json.Marshal(r.Rule)
+        // Marshal payload
+        payloadBytes, _ := json.Marshal(payload)
+        var buf bytes.Buffer
+        if err := jsonlogic.Apply(bytes.NewReader(ruleJSON), bytes.NewReader(payloadBytes), &buf); err != nil {
+            return nil, err
+        }
+        // Decodifica valor final
+        var value interface{}
+        if err := json.NewDecoder(&buf).Decode(&value); err != nil {
+            return nil, err
+        }
+        // Salva no resultado final
+        result[r.Field] = value
+    }
+
+    return result, nil
+}
+
+
 func applyDiscounts(c echo.Context) error {
 	var payload Payload
 	if err := c.Bind(&payload); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	res, err := applyJsonLogic("./rules/discounts.json", payload)
+	res, err := applyJsonLogicRules("./rules/discounts.json", payload)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
@@ -73,7 +114,7 @@ func applyRestrictions(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	res, err := applyJsonLogic("./rules/restrictions.json", payload)
+	res, err := applyJsonLogicRules("./rules/restrictions.json", payload)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
